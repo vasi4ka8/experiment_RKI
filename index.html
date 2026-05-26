@@ -638,9 +638,9 @@ function downloadCSV(){
   a.href=url;a.download='exp_'+(p.surname||'p')+'_'+(p.variant||'X')+'_'+(p.code||'nocode')+'.csv';
   a.click();URL.revokeObjectURL(url);
 }
-const GITHUB_TOKEN='ghp_ВАШ_ТОКЕН_СЮДА';
-const REPO_OWNER='ВАШ_НИКНЕЙМ';
-const REPO_NAME='ВАШ_РЕПОЗИТОРИЙ';
+const GITHUB_TOKEN='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';
+const REPO_OWNER='vasi4ka8';
+const REPO_NAME='experiment_RKI';
 const RESULTS_FOLDER='results';
 async function saveCSVtoGitHub(csvContent){
   const p=participant;

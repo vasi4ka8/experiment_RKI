@@ -610,7 +610,7 @@ function checkMainQ(){
 }
 function finalize(){
   const csv=buildCSV();document.getElementById('csv-preview').textContent=csv;
-  goTo('s-final');saveCSVtoGitHub(csv);
+  goTo('s-final');saveToGoogleSheets(buildDataObject());
 }
 function buildCSV(){
   const p=participant;
@@ -638,37 +638,61 @@ function downloadCSV(){
   a.href=url;a.download='exp_'+(p.surname||'p')+'_'+(p.variant||'X')+'_'+(p.code||'nocode')+'.csv';
   a.click();URL.revokeObjectURL(url);
 }
-const GITHUB_TOKEN='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';
-const REPO_OWNER='vasi4ka8';
-const REPO_NAME='experiment_RKI';
-const RESULTS_FOLDER='results';
-async function saveCSVtoGitHub(csvContent){
+// ====================================================
+// GOOGLE SHEETS — вставьте сюда URL вашего Apps Script
+// ====================================================
+const SCRIPT_URL = 'ВСТАВЬТЕ_СЮДА_URL_ИЗ_APPS_SCRIPT';
+
+function buildDataObject(){
   const p=participant;
-  const now=new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Moscow'}));
-  const pad=n=>String(n).padStart(2,'0');
-  const ts=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'_'+pad(now.getHours())+'-'+pad(now.getMinutes());
-  const surname=(p.surname||'unknown').replace(/[^a-zA-Za-яА-Я0-9_-]/g,'');
-  const filename=RESULTS_FOLDER+'/result_'+surname+'_'+(p.variant||'X')+'_'+(p.code||'nocode')+'_'+ts+'.csv';
-  const encodedContent=btoa(unescape(encodeURIComponent('\uFEFF'+csvContent)));
-  let sha=null;
+  const obj={
+    timestamp:new Date().toLocaleString('ru-RU',{timeZone:'Europe/Moscow'}),
+    name:p.name||'',
+    surname:p.surname||'',
+    age:p.age||'',
+    lang:p.lang||'',
+    level:p.level||'',
+    code:p.code||'',
+    variant:p.variant||'',
+    session_start:p.session_start||'',
+    prac_interest:curTrialRes.prac_interest||'',
+    prac_diff:curTrialRes.prac_diff||'',
+    prac_img:curTrialRes.prac_img||'',
+    prac_emotion:curTrialRes.prac_emotion||'',
+    prac_words:curTrialRes.prac_words||'',
+    prac_sents:curTrialRes.prac_sents||'',
+  };
+  trialResults.forEach((r,i)=>{
+    const n=i+1;
+    obj['t'+n+'_title']=r.title;
+    obj['t'+n+'_level']=r.level===1?'лёгкий':'сложный';
+    obj['t'+n+'_type']=r.type==='descr'?'описание':'рассказ';
+    obj['t'+n+'_interest']=r.interest;
+    obj['t'+n+'_difficulty']=r.difficulty;
+    obj['t'+n+'_img']=r.image_chosen;
+    obj['t'+n+'_img_ok']=r.image_correct?'Да':'Нет';
+    obj['t'+n+'_emotion']=r.emotion;
+    obj['t'+n+'_words']=r.words;
+    obj['t'+n+'_sents']=r.sents;
+    obj['t'+n+'_t_text']=r.t_text_sec;
+    obj['t'+n+'_t_img']=r.t_img_sec;
+    obj['t'+n+'_t_q']=r.t_q_sec;
+  });
+  return obj;
+}
+
+async function saveToGoogleSheets(data){
   try{
-    const r=await fetch('https://api.github.com/repos/'+REPO_OWNER+'/'+REPO_NAME+'/contents/'+filename,
-      {headers:{'Authorization':'Bearer '+GITHUB_TOKEN}});
-    if(r.ok){const d=await r.json();sha=d.sha;}
-  }catch(e){}
-  try{
-    const res=await fetch('https://api.github.com/repos/'+REPO_OWNER+'/'+REPO_NAME+'/contents/'+filename,{
-      method:'PUT',
-      headers:{'Authorization':'Bearer '+GITHUB_TOKEN,'Content-Type':'application/json'},
-      body:JSON.stringify({message:'Результат: '+(p.surname||'')+' '+(p.name||'')+' ['+p.variant+'] '+ts,
-        content:encodedContent,...(sha?{sha}:{})})
+    await fetch(SCRIPT_URL,{
+      method:'POST',
+      mode:'no-cors',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(data)
     });
-    if(res.ok){
-      document.getElementById('final-icon').textContent='✓';
-      document.getElementById('final-status').textContent='Все ответы записаны.';
-      document.getElementById('final-save-ok').style.display='block';
-      document.getElementById('btn-download').style.display='inline-flex';
-    }else throw new Error((await res.json()).message);
+    document.getElementById('final-icon').textContent='✓';
+    document.getElementById('final-status').textContent='Все ответы записаны.';
+    document.getElementById('final-save-ok').style.display='block';
+    document.getElementById('btn-download').style.display='inline-flex';
   }catch(e){
     document.getElementById('final-icon').textContent='⚠️';
     document.getElementById('final-status').textContent='Автосохранение не удалось.';
